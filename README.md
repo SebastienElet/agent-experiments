@@ -1,7 +1,7 @@
 # agent-experiments
 
 Bounded agent experiments, validation and comparison, extracted from Arnes.
-Prepared for `@sebastienelet/agent-experiments@1.0.0`; no registry release is qualified yet.
+Prepared for `@sebastienelet/agent-experiments@0.0.1`; no registry release is qualified yet.
 
 Use Bun 1.4.3 to acquire the exact published version once available. Intended native
 targets: macOS ARM64 and Linux x64 glibc. Git and standard Unix utilities are prerequisites.

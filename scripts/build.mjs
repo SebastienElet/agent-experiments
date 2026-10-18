@@ -1,0 +1,21 @@
+import { mkdir, copyFile, chmod } from "node:fs/promises";
+import { join } from "node:path";
+import { createHash } from "node:crypto";
+import manifest from "../package.json";
+
+const root = join(import.meta.dir, "..");
+const suffix = { "darwin-arm64": "darwin-arm64", "linux-x64": "linux-x64-gnu" }[`${process.platform}-${process.arch}`];
+if (!suffix) throw new Error("Unsupported build platform");
+const build = Bun.spawnSync(["cargo", "build", "--release", "--locked"], { cwd: root, stdin: "inherit", stdout: "inherit", stderr: "inherit" });
+if (build.error) throw build.error;
+if (build.exitCode !== 0) process.exit(build.exitCode ?? 1);
+const revision = Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: root });
+if (revision.error) throw revision.error;
+if (revision.exitCode !== 0) throw new Error("Cannot identify build source revision");
+const directory = join(root, "packages", suffix);
+await mkdir(join(directory, "bin"), { recursive: true });
+const target = join(directory, "bin/agent-experiments");
+await copyFile(join(root, "target/release/agent-experiments"), target);
+await chmod(target, 0o755);
+const sha256 = createHash("sha256").update(new Uint8Array(await Bun.file(target).arrayBuffer())).digest("hex");
+await Bun.write(join(directory, "BUILD.json"), JSON.stringify({ version: manifest.version, source: revision.stdout.toString().trim(), platform: suffix, sha256 }, null, 2) + "\n");

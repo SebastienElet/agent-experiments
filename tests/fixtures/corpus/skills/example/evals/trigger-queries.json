@@ -1,0 +1,1 @@
+{"skill":"example","version":"1","queries":[{"query":"yes","should_activate":true,"reason":"explicit"},{"query":"no","should_activate":false,"reason":"unrelated"}]}

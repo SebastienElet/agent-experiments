@@ -1,0 +1,29 @@
+{
+  "name": "@sebastienelet/agent-experiments-linux-x64-gnu",
+  "version": "1.0.0",
+  "description": "Native agent-experiments executable for linux-x64-gnu",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SebastienElet/agent-experiments.git"
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin",
+    "BUILD.json",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "libc": [
+    "glibc"
+  ]
+}

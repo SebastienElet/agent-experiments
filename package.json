@@ -1,0 +1,47 @@
+{
+  "name": "@sebastienelet/agent-experiments",
+  "version": "1.0.0",
+  "description": "Bounded agent experiments and evidence validation",
+  "type": "module",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SebastienElet/agent-experiments.git"
+  },
+  "packageManager": "bun@1.4.3",
+  "engines": {
+    "bun": ">=1.4.3"
+  },
+  "bin": {
+    "agent-experiments": "bin/agent-experiments.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "tests",
+    "examples",
+    "Cargo.toml",
+    "Cargo.lock",
+    "rust-toolchain.toml",
+    "LICENSE",
+    "NOTICE",
+    "scripts",
+    "packages/*/package.json",
+    "bun.lock"
+  ],
+  "workspaces": [
+    "packages/*"
+  ],
+  "optionalDependencies": {
+    "@sebastienelet/agent-experiments-darwin-arm64": "1.0.0",
+    "@sebastienelet/agent-experiments-linux-x64-gnu": "1.0.0"
+  },
+  "scripts": {
+    "build": "bun scripts/build.mjs",
+    "test": "cargo test --locked && bun test tests/launcher.test.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}

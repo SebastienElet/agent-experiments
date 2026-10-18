@@ -1,0 +1,36 @@
+[
+  {
+    "id": "repository-literal",
+    "expected": "Use exact lookup for the supplied literal.",
+    "sources": [
+      {
+        "path": "instructions.md",
+        "heading": "Context Management"
+      }
+    ],
+    "prompt": {
+      "text": "Trouve exactement FEATURE_FLAG_DISABLED."
+    },
+    "fixture": "repository-lookup-v1",
+    "oracle": "literal-v1",
+    "success": "Successful rg invocation with the exact literal argument.",
+    "failure": "No successful exact lookup."
+  },
+  {
+    "id": "repository-known-path",
+    "expected": "Read the known file without repository exploration.",
+    "sources": [
+      {
+        "path": "instructions.md",
+        "heading": "Context Management"
+      }
+    ],
+    "prompt": {
+      "text": "Lis src/auth/session.ts et explique cette fonction."
+    },
+    "fixture": "repository-lookup-v1",
+    "oracle": "known-path-v1",
+    "success": "Successful instrumented read of src/auth/session.ts without rg or fd.",
+    "failure": "Target file not read successfully, or exploratory search invoked."
+  }
+]

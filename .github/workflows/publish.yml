@@ -35,7 +35,7 @@ jobs:
       - run: bun test tests/launcher.test.mjs
       - run: bun pm pack --destination ../../dist
         working-directory: packages/${{ matrix.variant }}
-      - run: npm publish dist/sebastienelet-agent-experiments-${{ matrix.variant }}-0.0.1.tgz --provenance --access public --registry https://registry.npmjs.org --ignore-scripts
+      - run: npm publish ./dist/sebastienelet-agent-experiments-${{ matrix.variant }}-0.0.1.tgz --provenance --access public --registry https://registry.npmjs.org --ignore-scripts
   entry:
     needs: native
     runs-on: ubuntu-24.04
@@ -56,4 +56,4 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - run: bun pm pack --destination dist
-      - run: npm publish dist/sebastienelet-agent-experiments-0.0.1.tgz --provenance --access public --registry https://registry.npmjs.org --ignore-scripts
+      - run: npm publish ./dist/sebastienelet-agent-experiments-0.0.1.tgz --provenance --access public --registry https://registry.npmjs.org --ignore-scripts

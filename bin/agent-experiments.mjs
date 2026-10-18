@@ -13,7 +13,7 @@ try {
   try {
     manifest = import.meta.resolve(`@sebastienelet/agent-experiments-${suffix}/package.json`);
   } catch {
-    throw new Error(`Missing @sebastienelet/agent-experiments-${suffix}@1.0.0; install optional dependencies with Bun`);
+    throw new Error(`Missing @sebastienelet/agent-experiments-${suffix}@0.0.1; install optional dependencies with Bun`);
   }
   const executable = join(dirname(fileURLToPath(manifest)), "bin/agent-experiments");
   const result = Bun.spawnSync([executable, ...process.argv.slice(2)], { stdin: "inherit", stdout: "inherit", stderr: "inherit" });

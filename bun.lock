@@ -5,17 +5,17 @@
     "": {
       "name": "@sebastienelet/agent-experiments",
       "optionalDependencies": {
-        "@sebastienelet/agent-experiments-darwin-arm64": "1.0.0",
-        "@sebastienelet/agent-experiments-linux-x64-gnu": "1.0.0",
+        "@sebastienelet/agent-experiments-darwin-arm64": "0.0.1",
+        "@sebastienelet/agent-experiments-linux-x64-gnu": "0.0.1",
       },
     },
     "packages/darwin-arm64": {
       "name": "@sebastienelet/agent-experiments-darwin-arm64",
-      "version": "1.0.0",
+      "version": "0.0.1",
     },
     "packages/linux-x64-gnu": {
       "name": "@sebastienelet/agent-experiments-linux-x64-gnu",
-      "version": "1.0.0",
+      "version": "0.0.1",
     },
   },
   "packages": {

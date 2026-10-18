@@ -5,7 +5,7 @@ const launcher = join(import.meta.dir, "../bin/agent-experiments.mjs");
 test("Bun wrapper invokes the native public command", () => {
   const result = Bun.spawnSync([process.execPath, launcher, "--version"]);
   expect(result.exitCode).toBe(0);
-  expect(result.stdout.toString()).toBe("agent-experiments 1.0.0\n");
+  expect(result.stdout.toString()).toBe("agent-experiments 0.0.1\n");
 });
 test("Bun wrapper preserves native argument failures", () => {
   const result = Bun.spawnSync([process.execPath, launcher, "--unknown-552-option"]);

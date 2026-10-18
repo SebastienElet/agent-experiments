@@ -20,7 +20,7 @@ test("missing optional native package is an explicit failure without fallback", 
   try {
     const isolated = join(directory, "launcher.mjs");
     await copyFile(launcher, isolated);
-    const result = Bun.spawnSync([process.execPath, isolated, "--version"]);
+    const result = Bun.spawnSync([process.execPath, "--no-install", isolated, "--version"]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr.toString()).toContain("Missing @sebastienelet/");
     expect(result.stdout.toString()).toBe("");

@@ -25,7 +25,7 @@ pub struct LoadedCase {
 }
 
 pub fn fingerprint(value: impl AsRef<[u8]>) -> String {
-    format!("{:x}", Sha256::digest(value.as_ref()))
+    hex::encode(Sha256::digest(value.as_ref()))
 }
 
 /// # Errors

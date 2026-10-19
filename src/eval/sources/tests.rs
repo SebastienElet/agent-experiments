@@ -1,6 +1,18 @@
 use super::*;
 
 #[test]
+fn fingerprints_are_lowercase_sha256_hex() {
+    assert_eq!(
+        fingerprint(b""),
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
+    assert_eq!(
+        fingerprint(b"hello world"),
+        "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+    );
+}
+
+#[test]
 fn loads_native_lookup_cases_without_a_skill_source() -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/corpus");
     let cases = load_cases(&root)?;

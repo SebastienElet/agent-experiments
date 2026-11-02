@@ -30,7 +30,14 @@ fn trial(root: &Path, oracle: &str, provider: &str, name: &str) -> Result<Value>
         .arg(root.join("instructions.md"))
         .args(["--model", "fixture-model", "--report"])
         .arg(root.join(name))
-        .args(["--timeout-seconds", "1", "--tool-path", "/usr/bin:/bin"])
+        .args([
+            "--timeout-seconds",
+            "1",
+            "--tool-path",
+            "/usr/bin:/bin",
+            "--docker-host",
+            "tcp://127.0.0.1:65534",
+        ])
         .env_clear()
         .env("HOME", root)
         .env("CODEX_API_KEY", "synthetic-test-key")
@@ -160,5 +167,59 @@ fn preserves_executable_modes_and_requires_an_instruction_change_for_gain() -> R
     assert!(output.status.success());
     let comparison: Value = serde_json::from_slice(&output.stdout)?;
     assert_eq!(comparison.get("observed_gain"), Some(&json!(false)));
+    Ok(())
+}
+
+#[test]
+fn dedicated_docker_endpoint_reaches_the_agent_environment() -> Result {
+    let root = tempfile::tempdir()?;
+    let provider = format!("{PROVIDER}\nprintf '%s' \"$DOCKER_HOST\" > endpoint.txt");
+    trial(root.path(), "true\n", &provider, "endpoint")?;
+    let result: Value =
+        serde_json::from_slice(&fs::read(root.path().join("endpoint/result.json"))?)?;
+    assert_eq!(
+        result.get("endpoint.txt"),
+        Some(&json!("tcp://127.0.0.1:65534"))
+    );
+    Ok(())
+}
+
+#[test]
+fn empty_or_implicit_docker_endpoints_refuse_before_execution() -> Result {
+    let root = tempfile::tempdir()?;
+    trial(root.path(), "true\n", PROVIDER, "initial")?;
+    for host in [
+        "",
+        " ",
+        "unix://",
+        "unix:///var/run/docker.sock",
+        "tcp://127.0.0.1:0",
+        "tcp://127.0.0.1:65536",
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_agent-experiments"))
+            .args(["repository-run", "--case"])
+            .arg(root.path().join("case.json"))
+            .arg("--instructions")
+            .arg(root.path().join("instructions.md"))
+            .args(["--model", "fixture-model", "--report"])
+            .arg(root.path().join("rejected"))
+            .args(["--tool-path", "/usr/bin:/bin", "--docker-host", host])
+            .output()?;
+        assert!(!output.status.success());
+        assert!(!root.path().join("rejected").exists());
+        let options = agent_experiments::eval::repository::Options {
+            case: root.path().join("case.json"),
+            instructions: root.path().join("instructions.md"),
+            report: root.path().join("rejected"),
+            model: "fixture-model".into(),
+            effort: "low".into(),
+            timeout_seconds: 1,
+            tool_path: "/usr/bin:/bin".into(),
+            network: false,
+            docker_host: Some(host.into()),
+        };
+        let result = agent_experiments::eval::repository::run(&options);
+        assert!(result.is_err_and(|error| error.contains("Dedicated Docker endpoint")));
+    }
     Ok(())
 }

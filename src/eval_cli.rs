@@ -55,6 +55,8 @@ struct RepositoryArgs {
     tool_path: String,
     #[arg(long)]
     network: bool,
+    #[arg(long, value_parser = repository::dedicated_docker_host)]
+    docker_host: Option<String>,
 }
 
 #[derive(Args)]
@@ -158,6 +160,7 @@ fn dispatch(args: EvalArgs) -> Result<ExitCode, String> {
                 timeout_seconds: u64::from(options.timeout_seconds),
                 tool_path: options.tool_path,
                 network: options.network,
+                docker_host: options.docker_host,
             })?;
             print_json(&status)?;
             return Ok(if status == agent_experiments::eval::report::Status::Pass {

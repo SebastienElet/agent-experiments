@@ -35,7 +35,13 @@ is not evidence about live model quality. Installation and tests do not trigger 
 --tool-path <explicit-PATH> --report <new-directory>` runs a fresh Codex workspace and
 an independent executable oracle. `--timeout-seconds` bounds each setup, agent and oracle
 process (1–600 seconds); `--network` explicitly permits sandbox networking when a dedicated
-local test service requires it. These are trusted-code experiments, not an adversarial sandbox.
+local test service requires it. `--docker-host <dedicated-endpoint>` pins `DOCKER_HOST`
+in setup, agent and oracle environments. Only explicit `tcp://127.0.0.1:<port>`
+endpoints are admitted; without this option Docker is disabled via `unix:///dev/null`.
+No host Docker configuration is copied. Existing
+fixture Git metadata is explicitly writable through Codex’s `writable_roots` override,
+within the disposable workspace only. The runner binary must remain identical through
+completion. These are trusted-code experiments, not an adversarial sandbox.
 Never use private data or credentials in fixtures or retained stdout.
 
 The case JSON has `id`, `prompt`, a nonempty `files` map (relative paths to UTF-8 contents),

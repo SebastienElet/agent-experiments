@@ -36,6 +36,7 @@ pub struct Options {
     pub timeout_seconds: u64,
     pub tool_path: String,
     pub network: bool,
+    pub docker_host: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -53,6 +54,10 @@ struct Report {
     timeout_seconds: u64,
     tool_path: String,
     network: bool,
+    #[serde(default)]
+    docker_host: Option<String>,
+    #[serde(default)]
+    writable_git_metadata: bool,
     environment: String,
     status: Status,
     error: Option<String>,
@@ -70,9 +75,17 @@ pub fn run(options: &Options) -> Result<Status, String> {
     let codex = Codex::discover()?;
     fs::create_dir(&options.report).map_err(|e| format!("New report directory required: {e}"))?;
     let executable = std::env::current_exe().map_err(|e| e.to_string())?;
+    let revision = runner_revision(&executable)?;
     let mut fixture = Fixture::prepare(&case.files, &instructions, &executable)?;
     fixture.env.insert("PATH".into(), options.tool_path.clone());
     fixture.env.insert("TZ".into(), "Europe/Paris".into());
+    fixture.env.insert(
+        "DOCKER_HOST".into(),
+        options
+            .docker_host
+            .clone()
+            .unwrap_or_else(|| "unix:///dev/null".into()),
+    );
     let oracle_root = fixture.root.join("oracle");
     install(&oracle_root, &case.oracle)?;
     let setup_path = fixture.root.join("setup.sh");
@@ -81,25 +94,15 @@ pub fn run(options: &Options) -> Result<Status, String> {
     fs::write(options.report.join("setup.log"), &setup.output).map_err(|e| e.to_string())?;
     let mut error = setup.failure_detail.map(|e| format!("Setup: {e}"));
     let mut status = Status::Invalid;
+    let writable_git_metadata = fixture.workspace.join(".git").is_dir();
     if error.is_none() {
-        let mut args = codex_arguments(&options.model, &options.effort);
-        if options.network {
-            for argument in &mut args {
-                if argument == "sandbox_workspace_write.network_access=false" {
-                    *argument = "sandbox_workspace_write.network_access=true".into();
-                }
-            }
-        }
-        let execution = capture(
-            &codex.command,
-            &args,
-            CaptureOptions {
-                cwd: &fixture.workspace,
-                env: &codex.environment(&fixture)?,
-                stdin: &case.prompt,
-                timeout: Duration::from_secs(options.timeout_seconds),
-            },
-        );
+        let execution = execute_agent(
+            options,
+            &codex,
+            &fixture,
+            writable_git_metadata,
+            &case.prompt,
+        )?;
         fs::write(options.report.join("agent.jsonl"), &execution.output)
             .map_err(|e| e.to_string())?;
         error = execution.failure_detail;
@@ -137,9 +140,9 @@ pub fn run(options: &Options) -> Result<Status, String> {
     let report = Report {
         schema: "repository-trial-v1".into(), date: date()?, case: case.id,
         case_hash: fingerprint(fs::read(options.report.join("case.json")).map_err(|e| e.to_string())?),
-        instruction_hash: fingerprint(instructions), runner_hash: runner_revision(&executable)?,
+        instruction_hash: fingerprint(instructions), runner_hash: revision.clone(),
         agent_version: codex.version, model: options.model.clone(), effort: options.effort.clone(),
-        timeout_seconds: options.timeout_seconds, tool_path: options.tool_path.clone(), network: options.network,
+        timeout_seconds: options.timeout_seconds, tool_path: options.tool_path.clone(), network: options.network, docker_host: options.docker_host.clone(), writable_git_metadata,
         environment: format!("{}-{}", std::env::consts::OS, std::env::consts::ARCH), status, error,
         artifacts: artifact_hashes(&options.report)?,
         limitations: [
@@ -152,8 +155,66 @@ pub fn run(options: &Options) -> Result<Status, String> {
             "Tool lookup paths do not pin tool versions; callers must retain their runtime inventory.",
         ].map(str::to_owned).to_vec(),
     };
+    if runner_revision(&executable)? != revision {
+        return Err("Runner executable changed during trial".into());
+    }
     write_json(&options.report.join("report.json"), &report)?;
     Ok(status)
+}
+
+fn execute_agent(
+    options: &Options,
+    codex: &Codex,
+    fixture: &Fixture,
+    writable_git_metadata: bool,
+    prompt: &str,
+) -> Result<CaptureResult, String> {
+    let mut args = codex_arguments(&options.model, &options.effort);
+    if options.network {
+        for argument in &mut args {
+            if argument == "sandbox_workspace_write.network_access=false" {
+                *argument = "sandbox_workspace_write.network_access=true".into();
+            }
+        }
+    }
+    if writable_git_metadata {
+        let _ = args.pop();
+        args.extend([
+            "-c".into(),
+            format!(
+                "sandbox_workspace_write.writable_roots={}",
+                serde_json::to_string(&[fixture.workspace.join(".git")])
+                    .map_err(|e| e.to_string())?
+            ),
+            "-".into(),
+        ]);
+    }
+    let execution = capture(
+        &codex.command,
+        &args,
+        CaptureOptions {
+            cwd: &fixture.workspace,
+            env: &codex.environment(fixture)?,
+            stdin: prompt,
+            timeout: Duration::from_secs(options.timeout_seconds),
+        },
+    );
+    Ok(execution)
+}
+
+/// # Errors
+/// Refuses implicit, empty or non-loopback Docker endpoints.
+pub fn dedicated_docker_host(value: &str) -> Result<String, String> {
+    let valid = value.strip_prefix("tcp://127.0.0.1:").is_some_and(|port| {
+        !port.is_empty()
+            && port.bytes().all(|byte| byte.is_ascii_digit())
+            && port.parse::<u16>().is_ok_and(|port| port > 0)
+    });
+    if valid {
+        Ok(value.into())
+    } else {
+        Err("Dedicated Docker endpoint must be tcp://127.0.0.1:<1-65535>".into())
+    }
 }
 
 fn validate_case(case: &Case, options: &Options) -> Result<(), String> {
@@ -161,6 +222,9 @@ fn validate_case(case: &Case, options: &Options) -> Result<(), String> {
     nonempty(&case.prompt)?;
     nonempty(&options.model)?;
     nonempty(&options.tool_path)?;
+    if let Some(host) = &options.docker_host {
+        let _ = dedicated_docker_host(host)?;
+    }
     if case.files.is_empty()
         || !case.oracle.contains_key("run.sh")
         || !(1..=600).contains(&options.timeout_seconds)
@@ -311,6 +375,8 @@ pub fn compare(left: &Path, right: &Path) -> Result<serde_json::Value, String> {
         || a.timeout_seconds != b.timeout_seconds
         || a.tool_path != b.tool_path
         || a.network != b.network
+        || a.docker_host != b.docker_host
+        || a.writable_git_metadata != b.writable_git_metadata
         || a.environment != b.environment
     {
         return Err("Incompatible repository trials".into());

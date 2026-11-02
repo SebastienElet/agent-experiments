@@ -138,7 +138,10 @@ impl Codex {
         Ok(execution)
     }
 
-    fn environment(&self, fixture: &Fixture) -> Result<BTreeMap<String, String>, String> {
+    pub(super) fn environment(
+        &self,
+        fixture: &Fixture,
+    ) -> Result<BTreeMap<String, String>, String> {
         if let Some(file) = &self.authentication.file {
             let codex_home = fixture
                 .env

@@ -1,4 +1,4 @@
-use agent_experiments::eval::{compare, evidence, live::Codex, runner, shim, validate};
+use agent_experiments::eval::{compare, evidence, live::Codex, repository, runner, shim, validate};
 use clap::{Args, Subcommand};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -20,6 +20,11 @@ enum EvalCommand {
     FixtureSmoke,
     Preflight,
     Run(RunArgs),
+    RepositoryRun(RepositoryArgs),
+    RepositoryCompare {
+        baseline: PathBuf,
+        candidate: PathBuf,
+    },
     Compare {
         baseline: PathBuf,
         candidate: PathBuf,
@@ -30,6 +35,28 @@ enum EvalCommand {
         #[arg(last = true)]
         args: Vec<String>,
     },
+}
+
+#[derive(Args)]
+struct RepositoryArgs {
+    #[arg(long)]
+    case: PathBuf,
+    #[arg(long)]
+    instructions: PathBuf,
+    #[arg(long)]
+    report: PathBuf,
+    #[arg(long, value_parser = model_id)]
+    model: String,
+    #[arg(long, default_value = "low", value_parser = ["low", "medium", "high"])]
+    reasoning_effort: String,
+    #[arg(long, default_value = "600", value_parser = clap::value_parser!(u16).range(1..=600))]
+    timeout_seconds: u16,
+    #[arg(long)]
+    tool_path: String,
+    #[arg(long)]
+    network: bool,
+    #[arg(long, value_parser = repository::dedicated_docker_host)]
+    docker_host: Option<String>,
 }
 
 #[derive(Args)]
@@ -123,6 +150,29 @@ fn dispatch(args: EvalArgs) -> Result<ExitCode, String> {
         }
         EvalCommand::FixtureSmoke => print_json(&runner::run_smoke(&args.repository)?)?,
         EvalCommand::Run(options) => return run_and_publish(&args.repository, options),
+        EvalCommand::RepositoryRun(options) => {
+            let status = repository::run(&repository::Options {
+                case: options.case,
+                instructions: options.instructions,
+                report: options.report,
+                model: options.model,
+                effort: options.reasoning_effort,
+                timeout_seconds: u64::from(options.timeout_seconds),
+                tool_path: options.tool_path,
+                network: options.network,
+                docker_host: options.docker_host,
+            })?;
+            print_json(&status)?;
+            return Ok(if status == agent_experiments::eval::report::Status::Pass {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::from(1)
+            });
+        }
+        EvalCommand::RepositoryCompare {
+            baseline,
+            candidate,
+        } => print_json(&repository::compare(&baseline, &candidate)?)?,
         EvalCommand::Compare {
             baseline,
             candidate,

@@ -9,6 +9,7 @@ mod observe;
 pub mod oracle;
 pub mod process;
 pub mod report;
+pub mod repository;
 pub mod runner;
 pub mod shim;
 mod smoke;

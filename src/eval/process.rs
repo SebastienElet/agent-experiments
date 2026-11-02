@@ -30,6 +30,7 @@ pub struct CaptureOptions<'a> {
 
 #[derive(Debug)]
 pub struct CaptureResult {
+    pub exit_code: Option<i32>,
     pub output: String,
     pub error: Option<ExecutionError>,
     pub failure_detail: Option<String>,
@@ -58,6 +59,7 @@ pub fn capture(command: &Path, args: &[String], options: CaptureOptions<'_>) -> 
         Ok(child) => child,
         Err(error) => {
             return CaptureResult {
+                exit_code: None,
                 output: String::new(),
                 error: Some(ExecutionError::AgentFailed),
                 failure_detail: Some(format!("could not start process: {}", error.kind())),
@@ -68,6 +70,7 @@ pub fn capture(command: &Path, args: &[String], options: CaptureOptions<'_>) -> 
         let _ = stop_group(&mut child);
         let _ = child.wait();
         return CaptureResult {
+            exit_code: None,
             output: String::new(),
             error: Some(ExecutionError::AgentFailed),
             failure_detail: Some("process pipes unavailable".into()),
@@ -206,6 +209,7 @@ fn monitor(child: &mut Child, receiver: &Receiver<PipeEvent>, timeout: Duration)
         (!status.is_some_and(|status| status.success())).then_some(ExecutionError::AgentFailed)
     });
     CaptureResult {
+        exit_code: status.and_then(|status| status.code()),
         output,
         error,
         failure_detail: error.map(|error| failure_detail(error, status)),
